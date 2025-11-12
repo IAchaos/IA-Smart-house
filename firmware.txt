@@ -1,0 +1,301 @@
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <DHT.h>
+
+// WiFi Configuration
+const char* ssid = "Wokwi-GUEST";
+const char* password = "";
+
+// MQTT Configuration
+const char* mqtt_server = "broker.hivemq.com";
+const int mqtt_port = 1883;
+const char* mqtt_client_id = "ESP32_SmartHome"; // Must be unique
+
+// Pin Definitions
+#define DHTPIN 15          // DHT22 data pin
+#define DHTTYPE DHT22      // DHT22 sensor type
+#define PIR_PIN 27         // PIR sensor output pin
+#define LDR_PIN 34         // LDR sensor analog pin
+#define LED1_PIN 16        // Main light LED
+#define LED2_PIN 17        // Status/Alarm LED
+#define BUZZER_PIN 26      // Buzzer pin
+
+// System Constants
+const long sensor_interval = 2000;    // Sensor reading interval (ms)
+const long pir_interval = 500;        // PIR check interval (ms)
+const int light_threshold = 2000;     // Threshold for determining darkness
+
+// Initialize DHT sensor
+DHT dht(DHTPIN, DHTTYPE);
+
+// WiFi and MQTT clients
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+// System state variables
+float temperature = 0.0;
+float humidity = 0.0;
+int lightLevel = 0;
+bool motionDetected = false;
+bool systemArmed = true;  // Security system armed by default
+bool nightTime = false;   // Is it nighttime/dark?
+
+// Timing variables
+unsigned long lastSensorReading = 0;
+unsigned long lastPIRCheck = 0;
+unsigned long lastReconnectAttempt = 0;
+const long reconnectInterval = 5000; // Reconnect interval (ms)
+
+void setup_wifi() {
+  delay(10);
+  Serial.println("Connecting to WiFi");
+  
+  WiFi.begin(ssid, password);
+  
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+    delay(500);
+    Serial.print(".");
+    attempts++;
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nWiFi connected");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+    digitalWrite(LED2_PIN, HIGH); // Turn on status LED
+  } else {
+    Serial.println("\nFailed to connect to WiFi");
+    digitalWrite(LED2_PIN, LOW); // Turn off status LED
+  }
+}
+
+
+void callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  
+  String message;
+  for (int i = 0; i < length; i++) {
+    message += (char)payload[i];
+  }
+  Serial.println(message);
+  
+  // Handle commands
+  if (strcmp(topic, "home/commands") == 0) {
+    if (message == "arm") {
+      systemArmed = true;
+      Serial.println("System armed");
+      client.publish("home/security/status", "armed");
+      digitalWrite(LED2_PIN, HIGH); // Solid light when armed
+    } 
+    else if (message == "disarm") {
+      systemArmed = false;
+      Serial.println("System disarmed");
+      client.publish("home/security/status", "disarmed");
+      digitalWrite(LED2_PIN, LOW); // Off when disarmed
+    }
+    else if (message == "lighton") {
+      digitalWrite(LED1_PIN, HIGH);
+      client.publish("home/light/status", "on");
+    }
+    else if (message == "lightoff") {
+      digitalWrite(LED1_PIN, LOW);
+      client.publish("home/light/status", "off");
+    }
+  }
+}
+boolean reconnect() {
+  unsigned long now = millis();
+  if (now - lastReconnectAttempt > reconnectInterval) {
+    lastReconnectAttempt = now;
+    
+    Serial.print("Attempting MQTT connection...");
+    
+    // Create a random client ID
+    String clientId = mqtt_client_id;
+    clientId += String(random(0xffff), HEX);
+    
+    // Attempt to connect
+    if (client.connect(clientId.c_str())) {
+      Serial.println("connected");
+      
+      // Once connected, publish an announcement
+      client.publish("home/status", "online");
+      
+      // Subscribe to command topics
+      client.subscribe("home/commands");
+      
+      // Publish initial states
+      client.publish("home/security/status", systemArmed ? "armed" : "disarmed");
+      client.publish("home/light/status", digitalRead(LED1_PIN) ? "on" : "off");
+      
+      return true;
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again later");
+    }
+  }
+  return false;
+}
+
+void statusBlink(int count) {
+  for (int i = 0; i < count; i++) {
+    digitalWrite(LED2_PIN, HIGH);
+    delay(200);
+    digitalWrite(LED2_PIN, LOW);
+    delay(200);
+  }
+}
+
+
+void triggerAlarm() {
+  if (systemArmed) {
+    Serial.println("ALARM ACTIVATED!");
+    client.publish("home/security", "alarm");
+    
+    // Sound the alarm (5 beeps)
+    for (int i = 0; i < 5; i++) {
+      digitalWrite(BUZZER_PIN, HIGH);
+      digitalWrite(LED2_PIN, HIGH); // Flash status LED
+      delay(200);
+      digitalWrite(BUZZER_PIN, LOW);
+      digitalWrite(LED2_PIN, LOW);
+      delay(200);
+    }
+    
+    // Keep status LED on after alarm
+    digitalWrite(LED2_PIN, HIGH);
+  } else {
+    Serial.println("Motion detected but system is disarmed");
+  }
+}
+
+void setup() {
+  // Initialize serial communication
+  Serial.begin(115200);
+  delay(1000); // Wait for serial monitor
+  Serial.println("\nSmart Home System Starting");
+  
+  // Initialize pins
+  pinMode(PIR_PIN, INPUT);
+  pinMode(LDR_PIN, INPUT);
+  pinMode(LED1_PIN, OUTPUT);
+  pinMode(LED2_PIN, OUTPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+  
+  // Initial LED states
+  digitalWrite(LED1_PIN, LOW);
+  digitalWrite(LED2_PIN, LOW);
+  digitalWrite(BUZZER_PIN, LOW);
+  
+  // Initialize DHT sensor
+  dht.begin();
+  
+  // Status blink to indicate startup
+  statusBlink(3);
+  
+  // Connect to WiFi
+  setup_wifi();
+  
+  // Set MQTT server and callback
+  client.setServer(mqtt_server, mqtt_port);
+  client.setCallback(callback);
+  
+  // Initial MQTT connection
+  if (client.connect(mqtt_client_id)) {
+    client.publish("home/status", "online");
+    client.subscribe("home/commands");
+  }
+}
+
+
+void loop() {
+  // Handle MQTT connection
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
+  
+  unsigned long currentMillis = millis();
+  
+  // Check PIR sensor at appropriate intervals
+  if (currentMillis - lastPIRCheck > pir_interval) {
+    lastPIRCheck = currentMillis;
+    
+    int pirValue = digitalRead(PIR_PIN);
+    if (pirValue == HIGH && !motionDetected) {
+      motionDetected = true;
+      Serial.println("Motion detected!");
+      
+      // Turn on light if it's dark
+      if (nightTime) {
+        digitalWrite(LED1_PIN, HIGH);
+        client.publish("home/light/status", "on");
+      }
+      
+      // Trigger alarm if system is armed
+      triggerAlarm();
+    } 
+    else if (pirValue == LOW && motionDetected) {
+      motionDetected = false;
+      Serial.println("Motion ended");
+      
+      // Turn off light after delay if no motion and it's dark
+      if (nightTime) {
+        delay(5000); // Keep light on for 5 seconds
+        if (!motionDetected) {
+          digitalWrite(LED1_PIN, LOW);
+          client.publish("home/light/status", "off");
+        }
+      }
+    }
+  }
+  
+  // Read sensors and publish data at defined intervals
+  if (currentMillis - lastSensorReading > sensor_interval) {
+    lastSensorReading = currentMillis;
+    
+    // Read temperature and humidity
+    temperature = dht.readTemperature();
+    humidity = dht.readHumidity();
+    
+    // Check if DHT readings failed
+    if (isnan(temperature) || isnan(humidity)) {
+      Serial.println("Failed to read from DHT sensor!");
+    } else {
+      Serial.print("Temp: ");
+      Serial.print(temperature);
+      Serial.print(" °C, Humidity: ");
+      Serial.print(humidity);
+      Serial.println("%");
+      
+      // Publish temperature and humidity to MQTT
+      client.publish("home/temperature", String(temperature).c_str());
+      client.publish("home/humidity", String(humidity).c_str());
+    }
+    
+    // Read light level
+    lightLevel = analogRead(LDR_PIN);
+    Serial.print("Light level: ");
+    Serial.println(lightLevel);
+    
+    // Determine if it's "night time" (dark)
+    nightTime = (lightLevel < light_threshold);
+    
+    // Publish light level to MQTT
+    client.publish("home/lightlevel", String(lightLevel).c_str());
+    
+    // Automatic light control (if it's dark and motion is detected)
+    if (nightTime && motionDetected) {
+      digitalWrite(LED1_PIN, HIGH);
+      client.publish("home/light/status", "on");
+    } else if (!motionDetected && nightTime) {
+      // Only turn off if it's dark and no motion
+      digitalWrite(LED1_PIN, LOW);
+      client.publish("home/light/status", "off");
+    }
+  }
+}

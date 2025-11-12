@@ -1,0 +1,643 @@
+[
+    {
+        "id": "cfde42e41ef3e762",
+        "type": "tab",
+        "label": "Smart Home Dashboard",
+        "disabled": false,
+        "info": "Enhanced Smart Home System Dashboard with multiple views and intuitive controls",
+        "env": []
+    },
+    {
+        "id": "b50fe107228852b2",
+        "type": "mqtt in",
+        "z": "cfde42e41ef3e762",
+        "name": "Temperature",
+        "topic": "home/temperature",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "3319721ee0fb62b9",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 290,
+        "y": 260,
+        "wires": [
+            [
+                "65b7d041a1063d8e",
+                "77535d78a61d8e2a",
+                "dd04aa4b52d42684"
+            ]
+        ]
+    },
+    {
+        "id": "4ff996a3710a6a90",
+        "type": "mqtt in",
+        "z": "cfde42e41ef3e762",
+        "name": "Humidity",
+        "topic": "home/humidity",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "3319721ee0fb62b9",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 280,
+        "y": 360,
+        "wires": [
+            [
+                "4e79a9cffcf55f4e",
+                "ba4fa7aa164597c7"
+            ]
+        ]
+    },
+    {
+        "id": "2614a199be467f58",
+        "type": "mqtt in",
+        "z": "cfde42e41ef3e762",
+        "name": "Light Level",
+        "topic": "home/lightlevel",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "3319721ee0fb62b9",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 280,
+        "y": 440,
+        "wires": [
+            [
+                "53fbb4fe01274029",
+                "c9fdd829adbea1e7"
+            ]
+        ]
+    },
+    {
+        "id": "670ece85ac68917e",
+        "type": "mqtt in",
+        "z": "cfde42e41ef3e762",
+        "name": "Security Status",
+        "topic": "home/security/status",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "3319721ee0fb62b9",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 300,
+        "y": 520,
+        "wires": [
+            [
+                "e1aa52530e61ae96",
+                "237b952484886cd5",
+                "57b72086eef28c18"
+            ]
+        ]
+    },
+    {
+        "id": "cf11a7e76334785b",
+        "type": "mqtt out",
+        "z": "cfde42e41ef3e762",
+        "name": "Commands",
+        "topic": "home/commands",
+        "qos": "2",
+        "retain": "",
+        "broker": "3319721ee0fb62b9",
+        "x": 830,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "65b7d041a1063d8e",
+        "type": "function",
+        "z": "cfde42e41ef3e762",
+        "name": "Convert Temp to Number",
+        "func": "msg.payload = parseFloat(msg.payload);\nif (isNaN(msg.payload)) {\n    msg.payload = 0;\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
+        "y": 200,
+        "wires": [
+            [
+                "9ac5480404db7711"
+            ]
+        ]
+    },
+    {
+        "id": "4e79a9cffcf55f4e",
+        "type": "function",
+        "z": "cfde42e41ef3e762",
+        "name": "Convert Humidity to Number",
+        "func": "msg.payload = parseFloat(msg.payload);\nif (isNaN(msg.payload)) {\n    msg.payload = 0;\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
+        "y": 300,
+        "wires": [
+            [
+                "e24608ad7f56dec6"
+            ]
+        ]
+    },
+    {
+        "id": "9ac5480404db7711",
+        "type": "ui_gauge",
+        "z": "cfde42e41ef3e762",
+        "name": "Main Temp Gauge",
+        "group": "101e6a7c43b149b5",
+        "order": 1,
+        "width": "6",
+        "height": "4",
+        "gtype": "donut",
+        "title": "Temperature",
+        "label": "°C",
+        "format": "{{value}}",
+        "min": "0",
+        "max": "40",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "25",
+        "seg2": "30",
+        "className": "",
+        "x": 950,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "e24608ad7f56dec6",
+        "type": "ui_gauge",
+        "z": "cfde42e41ef3e762",
+        "name": "Main Humidity Gauge",
+        "group": "101e6a7c43b149b5",
+        "order": 2,
+        "width": "6",
+        "height": "4",
+        "gtype": "donut",
+        "title": "Humidity",
+        "label": "%",
+        "format": "{{value}}",
+        "min": "0",
+        "max": "100",
+        "colors": [
+            "#53a3f2",
+            "#4682b4",
+            "#1c3c72"
+        ],
+        "seg1": "60",
+        "seg2": "80",
+        "className": "",
+        "x": 940,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "53fbb4fe01274029",
+        "type": "ui_text",
+        "z": "cfde42e41ef3e762",
+        "group": "101e6a7c43b149b5",
+        "order": 3,
+        "width": "6",
+        "height": "1",
+        "name": "Light Level Display",
+        "label": "Ambient Light",
+        "format": "<div style='text-align:center;'><i class='fa fa-sun-o' style='font-size:18px;'></i> {{msg.payload}}</div>",
+        "layout": "row-center",
+        "className": "",
+        "style": false,
+        "font": "font-weight: bold;",
+        "fontSize": "18",
+        "color": "#333333",
+        "x": 960,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "e1aa52530e61ae96",
+        "type": "ui_text",
+        "z": "cfde42e41ef3e762",
+        "group": "101e6a7c43b149b5",
+        "order": 4,
+        "width": "6",
+        "height": "1",
+        "name": "Security Status Display",
+        "label": "Security Status",
+        "format": "<div style='text-align:center; padding:8px; background-color:{{#if (eq msg.payload \"armed\")}}#ff6b6b{{else if (eq msg.payload \"disarmed\")}}#4caf50{{else if (eq msg.payload \"alarm\")}}#ff9e64{{/if}}; color:white; border-radius:4px;'><b>{{msg.payload}}</b></div>",
+        "layout": "row-center",
+        "className": "",
+        "style": false,
+        "font": "font-weight: bold;",
+        "fontSize": "18",
+        "color": "#000000",
+        "x": 960,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "2d2d3897809e38be",
+        "type": "ui_button",
+        "z": "cfde42e41ef3e762",
+        "name": "Light ON Button",
+        "group": "63ee443e5dbd884a",
+        "order": 1,
+        "width": "3",
+        "height": "2",
+        "passthru": false,
+        "label": "<i class='fa fa-lightbulb-o'></i> Lights ON",
+        "tooltip": "Turn all smart lights on",
+        "color": "white",
+        "bgcolor": "#FFC107",
+        "className": "light-button-on",
+        "icon": "",
+        "payload": "lighton",
+        "payloadType": "str",
+        "topic": "home/commands",
+        "topicType": "msg",
+        "x": 290,
+        "y": 780,
+        "wires": [
+            [
+                "cf11a7e76334785b"
+            ]
+        ]
+    },
+    {
+        "id": "b831c527c9aa8afd",
+        "type": "ui_button",
+        "z": "cfde42e41ef3e762",
+        "name": "Arm System Button",
+        "group": "63ee443e5dbd884a",
+        "order": 2,
+        "width": "3",
+        "height": "2",
+        "passthru": false,
+        "label": "<i class='fa fa-shield'></i> ARM System",
+        "tooltip": "Arm the security system",
+        "color": "white",
+        "bgcolor": "#F44336",
+        "className": "security-button-arm",
+        "icon": "",
+        "payload": "arm",
+        "payloadType": "str",
+        "topic": "home/commands",
+        "topicType": "msg",
+        "x": 300,
+        "y": 700,
+        "wires": [
+            [
+                "cf11a7e76334785b"
+            ]
+        ]
+    },
+    {
+        "id": "0da2c18f328cb6df",
+        "type": "ui_button",
+        "z": "cfde42e41ef3e762",
+        "name": "Disarm System Button",
+        "group": "63ee443e5dbd884a",
+        "order": 3,
+        "width": "3",
+        "height": "2",
+        "passthru": false,
+        "label": "<i class='fa fa-unlock'></i> DISARM System",
+        "tooltip": "Disarm the security system",
+        "color": "white",
+        "bgcolor": "#4CAF50",
+        "className": "security-button-disarm",
+        "icon": "",
+        "payload": "disarm",
+        "payloadType": "str",
+        "topic": "home/commands",
+        "topicType": "msg",
+        "x": 310,
+        "y": 660,
+        "wires": [
+            [
+                "cf11a7e76334785b"
+            ]
+        ]
+    },
+    {
+        "id": "28a63e0e1ac5ae0b",
+        "type": "ui_button",
+        "z": "cfde42e41ef3e762",
+        "name": "Light OFF Button",
+        "group": "63ee443e5dbd884a",
+        "order": 4,
+        "width": "3",
+        "height": "2",
+        "passthru": false,
+        "label": "<i class='fa fa-lightbulb-o'></i> Lights OFF",
+        "tooltip": "Turn all smart lights off",
+        "color": "white",
+        "bgcolor": "#9E9E9E",
+        "className": "light-button-off",
+        "icon": "",
+        "payload": "lightoff",
+        "payloadType": "str",
+        "topic": "home/commands",
+        "topicType": "msg",
+        "x": 290,
+        "y": 740,
+        "wires": [
+            [
+                "cf11a7e76334785b"
+            ]
+        ]
+    },
+    {
+        "id": "77535d78a61d8e2a",
+        "type": "ui_chart",
+        "z": "cfde42e41ef3e762",
+        "name": "Temperature History",
+        "group": "b0e4604e3863c3b0",
+        "order": 2,
+        "width": "6",
+        "height": "5",
+        "label": "Temperature Trend",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "Waiting for data...",
+        "ymin": "0",
+        "ymax": "40",
+        "removeOlder": "1",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "60",
+        "outputs": 1,
+        "className": "",
+        "x": 1020,
+        "y": 300,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ba4fa7aa164597c7",
+        "type": "ui_chart",
+        "z": "cfde42e41ef3e762",
+        "name": "Humidity History",
+        "group": "8e47795762193fa3",
+        "order": 2,
+        "width": "6",
+        "height": "5",
+        "label": "Humidity Trend",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "Waiting for data...",
+        "ymin": "0",
+        "ymax": "100",
+        "removeOlder": "1",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "60",
+        "outputs": 1,
+        "className": "",
+        "x": 1020,
+        "y": 400,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "c9fdd829adbea1e7",
+        "type": "ui_chart",
+        "z": "cfde42e41ef3e762",
+        "name": "Light History",
+        "group": "0596d2a17d75f33d",
+        "order": 2,
+        "width": "6",
+        "height": "5",
+        "label": "Light Level Trend",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "Waiting for data...",
+        "ymin": "0",
+        "ymax": "4095",
+        "removeOlder": "1",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "60",
+        "outputs": 1,
+        "className": "",
+        "x": 1020,
+        "y": 500,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "237b952484886cd5",
+        "type": "ui_switch",
+        "z": "cfde42e41ef3e762",
+        "name": "Security Toggle Switch",
+        "label": "Security System",
+        "tooltip": "Toggle to arm/disarm security system",
+        "group": "23f98ef7de83ad98",
+        "order": 1,
+        "width": "6",
+        "height": "1",
+        "passthru": true,
+        "decouple": "false",
+        "topic": "home/commands",
+        "topicType": "str",
+        "style": "",
+        "onvalue": "arm",
+        "onvalueType": "str",
+        "onicon": "ARMED",
+        "oncolor": "#F44336",
+        "offvalue": "disarm",
+        "offvalueType": "str",
+        "officon": "DISARMED",
+        "offcolor": "#4CAF50",
+        "animate": true,
+        "className": "",
+        "x": 330,
+        "y": 620,
+        "wires": [
+            [
+                "cf11a7e76334785b"
+            ]
+        ]
+    },
+    {
+        "id": "dd04aa4b52d42684",
+        "type": "function",
+        "z": "cfde42e41ef3e762",
+        "name": "Format Temp for Chart",
+        "func": "msg.payload = {\"series\":[\"Temperature\"],\"data\":[[msg.payload]],\"labels\":[new Date().toISOString()]};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 620,
+        "y": 260,
+        "wires": [
+            [
+                "77535d78a61d8e2a"
+            ]
+        ]
+    },
+    {
+        "id": "57b72086eef28c18",
+        "type": "ui_text",
+        "z": "cfde42e41ef3e762",
+        "group": "23f98ef7de83ad98",
+        "order": 2,
+        "width": "6",
+        "height": "1",
+        "name": "Security Mode Status",
+        "label": "System Mode:",
+        "format": "<div style='padding:8px; background-color:#f5f5f5; border-radius:4px; margin-top:8px;'><b>{{msg.payload}}</b></div>",
+        "layout": "row-center",
+        "className": "",
+        "style": false,
+        "font": "font-weight: bold; font-size: 16px;",
+        "fontSize": "",
+        "color": "#333333",
+        "x": 620,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "3319721ee0fb62b9",
+        "type": "mqtt-broker",
+        "name": "HiveMQ Public",
+        "broker": "broker.hivemq.com",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "101e6a7c43b149b5",
+        "type": "ui_group",
+        "name": "Default",
+        "tab": "7a595a075791ce76",
+        "order": 1,
+        "disp": true,
+        "width": 6,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "63ee443e5dbd884a",
+        "type": "ui_group",
+        "name": "Quick Controls",
+        "tab": "7a595a075791ce76",
+        "order": 2,
+        "disp": true,
+        "width": "6",
+        "collapse": false
+    },
+    {
+        "id": "b0e4604e3863c3b0",
+        "type": "ui_group",
+        "name": "Temperature",
+        "tab": "66a633eb67c148f7",
+        "order": 1,
+        "disp": true,
+        "width": "6",
+        "collapse": false
+    },
+    {
+        "id": "8e47795762193fa3",
+        "type": "ui_group",
+        "name": "Humidity",
+        "tab": "66a633eb67c148f7",
+        "order": 2,
+        "disp": true,
+        "width": "6",
+        "collapse": false
+    },
+    {
+        "id": "0596d2a17d75f33d",
+        "type": "ui_group",
+        "name": "Ambient Light",
+        "tab": "66a633eb67c148f7",
+        "order": 3,
+        "disp": true,
+        "width": "6",
+        "collapse": false
+    },
+    {
+        "id": "23f98ef7de83ad98",
+        "type": "ui_group",
+        "name": "Security System",
+        "tab": "92996776f792f30e",
+        "order": 1,
+        "disp": true,
+        "width": "6",
+        "collapse": false
+    },
+    {
+        "id": "7a595a075791ce76",
+        "type": "ui_tab",
+        "name": "Home",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "66a633eb67c148f7",
+        "type": "ui_tab",
+        "name": "Climate",
+        "icon": "thermostat",
+        "order": 2,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "92996776f792f30e",
+        "type": "ui_tab",
+        "name": "Security",
+        "icon": "security",
+        "order": 3,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "e6a8e2216917de74",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-dashboard": "3.6.6"
+        }
+    }
+]
