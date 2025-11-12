@@ -9,21 +9,24 @@ const char* password = "";
 // MQTT Configuration
 const char* mqtt_server = "broker.hivemq.com";
 const int mqtt_port = 1883;
-const char* mqtt_client_id = "ESP32_SmartHome"; // Must be unique
+
+// FIX: Use a UNIQUE topic prefix with your name to avoid conflicts
+// CHANGE THIS to your own unique identifier!
+const char* topic_prefix = "smarthome_allam_imad_2025";
 
 // Pin Definitions
-#define DHTPIN 15          // DHT22 data pin
-#define DHTTYPE DHT22      // DHT22 sensor type
-#define PIR_PIN 27         // PIR sensor output pin
-#define LDR_PIN 34         // LDR sensor analog pin
-#define LED1_PIN 16        // Main light LED
-#define LED2_PIN 17        // Status/Alarm LED
-#define BUZZER_PIN 26      // Buzzer pin
+#define DHTPIN 15
+#define DHTTYPE DHT22
+#define PIR_PIN 27
+#define LDR_PIN 34
+#define LED1_PIN 16
+#define LED2_PIN 17
+#define BUZZER_PIN 26
 
 // System Constants
-const long sensor_interval = 2000;    // Sensor reading interval (ms)
-const long pir_interval = 500;        // PIR check interval (ms)
-const int light_threshold = 2000;     // Threshold for determining darkness
+const long sensor_interval = 2000;
+const long pir_interval = 500;
+const int light_threshold = 2000;
 
 // Initialize DHT sensor
 DHT dht(DHTPIN, DHTTYPE);
@@ -33,18 +36,49 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 // System state variables
-float temperature = 0.0;
-float humidity = 0.0;
+float temperature = 20.0;
+float humidity = 50.0;
 int lightLevel = 0;
 bool motionDetected = false;
-bool systemArmed = true;  // Security system armed by default
-bool nightTime = false;   // Is it nighttime/dark?
+bool systemArmed = true;
+bool nightTime = false;
 
 // Timing variables
 unsigned long lastSensorReading = 0;
 unsigned long lastPIRCheck = 0;
 unsigned long lastReconnectAttempt = 0;
-const long reconnectInterval = 5000; // Reconnect interval (ms)
+const long reconnectInterval = 5000;
+
+// Topic buffers
+char topic_temp[100];
+char topic_hum[100];
+char topic_light[100];
+char topic_security[100];
+char topic_light_status[100];
+char topic_status[100];
+char topic_commands[100];
+char topic_alarm[100];
+
+void setup_topics() {
+  // Build all topic strings with unique prefix
+  snprintf(topic_temp, sizeof(topic_temp), "%s/temperature", topic_prefix);
+  snprintf(topic_hum, sizeof(topic_hum), "%s/humidity", topic_prefix);
+  snprintf(topic_light, sizeof(topic_light), "%s/lightlevel", topic_prefix);
+  snprintf(topic_security, sizeof(topic_security), "%s/security/status", topic_prefix);
+  snprintf(topic_light_status, sizeof(topic_light_status), "%s/light/status", topic_prefix);
+  snprintf(topic_status, sizeof(topic_status), "%s/status", topic_prefix);
+  snprintf(topic_commands, sizeof(topic_commands), "%s/commands", topic_prefix);
+  snprintf(topic_alarm, sizeof(topic_alarm), "%s/security/alarm", topic_prefix);
+  
+  Serial.println("\n=== MQTT Topics ===");
+  Serial.print("Temperature: ");
+  Serial.println(topic_temp);
+  Serial.print("Humidity: ");
+  Serial.println(topic_hum);
+  Serial.print("Commands: ");
+  Serial.println(topic_commands);
+  Serial.println("==================\n");
+}
 
 void setup_wifi() {
   delay(10);
@@ -63,13 +97,12 @@ void setup_wifi() {
     Serial.println("\nWiFi connected");
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
-    digitalWrite(LED2_PIN, HIGH); // Turn on status LED
+    digitalWrite(LED2_PIN, HIGH);
   } else {
     Serial.println("\nFailed to connect to WiFi");
-    digitalWrite(LED2_PIN, LOW); // Turn off status LED
+    digitalWrite(LED2_PIN, LOW);
   }
 }
-
 
 void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
@@ -82,30 +115,30 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   Serial.println(message);
   
-  // Handle commands
-  if (strcmp(topic, "home/commands") == 0) {
+  if (strcmp(topic, topic_commands) == 0) {
     if (message == "arm") {
       systemArmed = true;
       Serial.println("System armed");
-      client.publish("home/security/status", "armed");
-      digitalWrite(LED2_PIN, HIGH); // Solid light when armed
+      client.publish(topic_security, "armed", false);
+      digitalWrite(LED2_PIN, HIGH);
     } 
     else if (message == "disarm") {
       systemArmed = false;
       Serial.println("System disarmed");
-      client.publish("home/security/status", "disarmed");
-      digitalWrite(LED2_PIN, LOW); // Off when disarmed
+      client.publish(topic_security, "disarmed", false);
+      digitalWrite(LED2_PIN, LOW);
     }
     else if (message == "lighton") {
       digitalWrite(LED1_PIN, HIGH);
-      client.publish("home/light/status", "on");
+      client.publish(topic_light_status, "on", false);
     }
     else if (message == "lightoff") {
       digitalWrite(LED1_PIN, LOW);
-      client.publish("home/light/status", "off");
+      client.publish(topic_light_status, "off", false);
     }
   }
 }
+
 boolean reconnect() {
   unsigned long now = millis();
   if (now - lastReconnectAttempt > reconnectInterval) {
@@ -113,23 +146,19 @@ boolean reconnect() {
     
     Serial.print("Attempting MQTT connection...");
     
-    // Create a random client ID
-    String clientId = mqtt_client_id;
+    // Create unique client ID
+    String clientId = "ESP32_SmartHome_";
     clientId += String(random(0xffff), HEX);
     
-    // Attempt to connect
     if (client.connect(clientId.c_str())) {
       Serial.println("connected");
       
-      // Once connected, publish an announcement
-      client.publish("home/status", "online");
+      // FIX: Publish with retain=false to prevent storing old values
+      client.publish(topic_status, "online", false);
+      client.subscribe(topic_commands);
       
-      // Subscribe to command topics
-      client.subscribe("home/commands");
-      
-      // Publish initial states
-      client.publish("home/security/status", systemArmed ? "armed" : "disarmed");
-      client.publish("home/light/status", digitalRead(LED1_PIN) ? "on" : "off");
+      client.publish(topic_security, systemArmed ? "armed" : "disarmed", false);
+      client.publish(topic_light_status, digitalRead(LED1_PIN) ? "on" : "off", false);
       
       return true;
     } else {
@@ -150,23 +179,20 @@ void statusBlink(int count) {
   }
 }
 
-
 void triggerAlarm() {
   if (systemArmed) {
     Serial.println("ALARM ACTIVATED!");
-    client.publish("home/security", "alarm");
+    client.publish(topic_alarm, "alarm", false);
     
-    // Sound the alarm (5 beeps)
     for (int i = 0; i < 5; i++) {
       digitalWrite(BUZZER_PIN, HIGH);
-      digitalWrite(LED2_PIN, HIGH); // Flash status LED
+      digitalWrite(LED2_PIN, HIGH);
       delay(200);
       digitalWrite(BUZZER_PIN, LOW);
       digitalWrite(LED2_PIN, LOW);
       delay(200);
     }
     
-    // Keep status LED on after alarm
     digitalWrite(LED2_PIN, HIGH);
   } else {
     Serial.println("Motion detected but system is disarmed");
@@ -174,46 +200,77 @@ void triggerAlarm() {
 }
 
 void setup() {
-  // Initialize serial communication
   Serial.begin(115200);
-  delay(1000); // Wait for serial monitor
-  Serial.println("\nSmart Home System Starting");
+  delay(1000);
+  Serial.println("\n\n=== SMART HOME SYSTEM STARTING ===");
   
-  // Initialize pins
   pinMode(PIR_PIN, INPUT);
   pinMode(LDR_PIN, INPUT);
   pinMode(LED1_PIN, OUTPUT);
   pinMode(LED2_PIN, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
   
-  // Initial LED states
   digitalWrite(LED1_PIN, LOW);
   digitalWrite(LED2_PIN, LOW);
   digitalWrite(BUZZER_PIN, LOW);
   
-  // Initialize DHT sensor
+  // Setup unique topics
+  setup_topics();
+  
+  Serial.println("Initializing DHT22 sensor...");
   dht.begin();
   
-  // Status blink to indicate startup
+  delay(2000);
+  
+  Serial.println("Reading initial DHT22 values...");
+  for (int attempt = 0; attempt < 10; attempt++) {
+    float t = dht.readTemperature();
+    float h = dht.readHumidity();
+    
+    Serial.print("Attempt ");
+    Serial.print(attempt + 1);
+    Serial.print(": Temp=");
+    Serial.print(t);
+    Serial.print("°C, Hum=");
+    Serial.print(h);
+    Serial.print("%");
+    
+    if (!isnan(t) && !isnan(h) && t >= -40 && t <= 80 && h >= 0 && h <= 100) {
+      temperature = t;
+      humidity = h;
+      Serial.println(" [VALID]");
+      break;
+    } else {
+      Serial.println(" [INVALID - RETRYING]");
+      delay(500);
+    }
+  }
+  
+  Serial.print("Initial values set: Temp=");
+  Serial.print(temperature);
+  Serial.print("°C, Hum=");
+  Serial.print(humidity);
+  Serial.println("%");
+  
   statusBlink(3);
   
-  // Connect to WiFi
   setup_wifi();
   
-  // Set MQTT server and callback
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
   
-  // Initial MQTT connection
-  if (client.connect(mqtt_client_id)) {
-    client.publish("home/status", "online");
-    client.subscribe("home/commands");
+  String clientId = "ESP32_SmartHome_";
+  clientId += String(random(0xffff), HEX);
+  
+  if (client.connect(clientId.c_str())) {
+    client.publish(topic_status, "online", false);
+    client.subscribe(topic_commands);
   }
+  
+  Serial.println("=== SYSTEM READY ===\n");
 }
 
-
 void loop() {
-  // Handle MQTT connection
   if (!client.connected()) {
     reconnect();
   }
@@ -221,7 +278,6 @@ void loop() {
   
   unsigned long currentMillis = millis();
   
-  // Check PIR sensor at appropriate intervals
   if (currentMillis - lastPIRCheck > pir_interval) {
     lastPIRCheck = currentMillis;
     
@@ -230,72 +286,89 @@ void loop() {
       motionDetected = true;
       Serial.println("Motion detected!");
       
-      // Turn on light if it's dark
       if (nightTime) {
         digitalWrite(LED1_PIN, HIGH);
-        client.publish("home/light/status", "on");
+        client.publish(topic_light_status, "on", false);
       }
       
-      // Trigger alarm if system is armed
       triggerAlarm();
     } 
     else if (pirValue == LOW && motionDetected) {
       motionDetected = false;
       Serial.println("Motion ended");
       
-      // Turn off light after delay if no motion and it's dark
       if (nightTime) {
-        delay(5000); // Keep light on for 5 seconds
+        delay(5000);
         if (!motionDetected) {
           digitalWrite(LED1_PIN, LOW);
-          client.publish("home/light/status", "off");
+          client.publish(topic_light_status, "off", false);
         }
       }
     }
   }
   
-  // Read sensors and publish data at defined intervals
   if (currentMillis - lastSensorReading > sensor_interval) {
     lastSensorReading = currentMillis;
     
-    // Read temperature and humidity
-    temperature = dht.readTemperature();
-    humidity = dht.readHumidity();
+    Serial.println("\n[Sensor Reading]");
     
-    // Check if DHT readings failed
-    if (isnan(temperature) || isnan(humidity)) {
-      Serial.println("Failed to read from DHT sensor!");
+    float newTemp = dht.readTemperature();
+    float newHum = dht.readHumidity();
+    
+    Serial.print("Raw DHT: Temp=");
+    Serial.print(newTemp);
+    Serial.print("°C, Hum=");
+    Serial.print(newHum);
+    Serial.print("%");
+    
+    bool validReading = !isnan(newTemp) && !isnan(newHum) && 
+                       newTemp >= -40 && newTemp <= 80 && 
+                       newHum >= 0 && newHum <= 100;
+    
+    if (validReading) {
+      temperature = newTemp;
+      humidity = newHum;
+      Serial.println(" [VALID]");
     } else {
-      Serial.print("Temp: ");
-      Serial.print(temperature);
-      Serial.print(" °C, Humidity: ");
-      Serial.print(humidity);
-      Serial.println("%");
-      
-      // Publish temperature and humidity to MQTT
-      client.publish("home/temperature", String(temperature).c_str());
-      client.publish("home/humidity", String(humidity).c_str());
+      Serial.println(" [INVALID - using old values]");
     }
     
-    // Read light level
+    // FIX: Format values properly and publish with retain=FALSE
+    char tempStr[10];
+    char humStr[10];
+    dtostrf(temperature, 4, 1, tempStr);
+    dtostrf(humidity, 4, 1, humStr);
+    
+    Serial.print("Publishing: Temp=");
+    Serial.print(tempStr);
+    Serial.print("°C to topic: ");
+    Serial.println(topic_temp);
+    
+    Serial.print("Publishing: Hum=");
+    Serial.print(humStr);
+    Serial.print("% to topic: ");
+    Serial.println(topic_hum);
+    
+    // FIX: The third parameter (false) means DO NOT RETAIN
+    client.publish(topic_temp, tempStr, false);
+    client.publish(topic_hum, humStr, false);
+    
     lightLevel = analogRead(LDR_PIN);
     Serial.print("Light level: ");
     Serial.println(lightLevel);
     
-    // Determine if it's "night time" (dark)
     nightTime = (lightLevel < light_threshold);
     
-    // Publish light level to MQTT
-    client.publish("home/lightlevel", String(lightLevel).c_str());
+    client.publish(topic_light, String(lightLevel).c_str(), false);
     
-    // Automatic light control (if it's dark and motion is detected)
     if (nightTime && motionDetected) {
       digitalWrite(LED1_PIN, HIGH);
-      client.publish("home/light/status", "on");
+      client.publish(topic_light_status, "on", false);
     } else if (!motionDetected && nightTime) {
-      // Only turn off if it's dark and no motion
       digitalWrite(LED1_PIN, LOW);
-      client.publish("home/light/status", "off");
+      client.publish(topic_light_status, "off", false);
     }
+    
+    Serial.println("---");
   }
 }

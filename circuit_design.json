@@ -10,7 +10,7 @@
       "id": "dht1",
       "top": -18.9,
       "left": 52.2,
-      "attrs": { "temperature": "-40", "humidity": "0" }
+      "attrs": {}
     },
     {
       "type": "wokwi-resistor",
