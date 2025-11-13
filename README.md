@@ -1,4 +1,4 @@
-\# Smart Home System Simulation with Wokwi
+# Smart Home System Simulation with Wokwi
 
 !\[Smart Home Dashboard\](screenshots/dashboard-preview.png)
 
